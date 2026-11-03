@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notebooks</title>
+<style>
+  :root { --paper: #fbf8f1; --ink: #2a2622; --muted: #8a8178; }
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; overflow: hidden; color: #f2ebe0; font: 15px/1.5 system-ui, sans-serif;
+         background: radial-gradient(circle at 50% 0, #40352d, #1c1815 75%); }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 24px; }
+  h1 { flex: 1; margin: 0; font: 600 22px Georgia, serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #hello { margin: 0; font: italic 16px Georgia, serif; color: #f0c27a; }
+  button { font: inherit; background: #efe6d6; color: var(--ink); border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  button:hover { background: #fff; }
+  button:disabled { opacity: .3; cursor: default; }
+  button:focus-visible { outline: 2px solid #f0c27a; outline-offset: 2px; }
+
+  /* Bookshelf */
+  #shelf { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 34px; padding: 20px 40px 60px; height: calc(100vh - 64px); overflow: auto; }
+  .book { position: relative; width: 150px; height: 210px; padding: 22px 14px 14px 26px; border-radius: 3px 8px 8px 3px;
+          display: flex; flex-direction: column; justify-content: space-between; text-align: left; color: #fff;
+          box-shadow: 6px 8px 18px rgba(0,0,0,.5); transition: transform .15s; }
+  .book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 12px; background: rgba(0,0,0,.25); border-right: 1px solid rgba(255,255,255,.15); }
+  .book:hover { transform: translateY(-6px) rotate(-1deg); }
+  .book .t { font: 600 19px/1.2 Georgia, serif; overflow-wrap: anywhere; }
+  .book .n { font-size: 12px; opacity: .8; }
+  .book.new { background: transparent; border: 2px dashed #6d6158; box-shadow: none; color: #b5a999; align-items: center; justify-content: center; padding: 14px; }
+  .book.new::before { display: none; }
+
+  /* Open book: two pages side by side, split at the spine */
+  #reader { display: none; height: 100vh; flex-direction: column; }
+  #reader.drag #spread { outline: 3px dashed #f0c27a; outline-offset: 6px; }
+  #stage { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 0 24px; }
+  #spread { display: flex; width: min(1500px, 100%); perspective: 3000px; }
+  .sheet { flex: 1; min-width: 0; overflow-y: auto; scrollbar-width: thin; padding: 30px 34px; background-color: var(--paper); color: var(--ink); cursor: zoom-in; }
+  .sheet.blank, .sheet.cover { cursor: default; }
+  .sheet.cover { cursor: pointer; }
+  #left { border-radius: 6px 0 0 6px; transform-origin: right center;
+          background-image: linear-gradient(to left, rgba(0,0,0,.14), transparent 46px);
+          box-shadow: -4px 0 0 -1px #ebe3d3, -8px 0 0 -2px #d9d0be, -12px 0 0 -3px #c8bea9, 0 10px 30px rgba(0,0,0,.5); }
+  #right { border-radius: 0 6px 6px 0; transform-origin: left center;
+           background-image: linear-gradient(to right, rgba(0,0,0,.14), transparent 46px);
+           box-shadow: 4px 0 0 -1px #ebe3d3, 8px 0 0 -2px #d9d0be, 12px 0 0 -3px #c8bea9, 0 10px 30px rgba(0,0,0,.5); }
+  .sheet img { display: block; width: 100%; margin: 0 0 14px; box-shadow: 0 0 0 1px #e6dfd2; }
+  .sheet video { display: block; width: 100%; max-height: 75vh; background: #000; border-radius: 4px; cursor: auto; }
+  .sheet pre { margin: 0; white-space: pre-wrap; font: 16px/1.65 Georgia, serif; }
+  .sheet.cover { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; color: #fff; }
+  .cover .ct { font: 600 46px/1.15 Georgia, serif; overflow-wrap: anywhere; }
+  .cover .cn { opacity: .75; }
+  .ptitle { margin-bottom: 18px; font: 600 12px system-ui; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .note { color: var(--muted); }
+  footer { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px; }
+  #pos { min-width: 150px; text-align: center; }
+
+  /* Close-up view of one page */
+  #focus { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; background: rgba(20,16,14,.97); }
+  #focus[hidden] { display: none; }
+  #focus .bar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; }
+  #focus .sp { flex: 1; }
+  #fpos { min-width: 110px; text-align: center; }
+  #zlvl { min-width: 70px; }
+  #fscroll { flex: 1; overflow: auto; padding: 0 20px 30px; }
+  #fsheet { --z: 1; margin: 0 auto; overflow: visible; cursor: auto; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #fsheet video { max-height: 80vh; }
+  #fsheet pre { font-size: calc(16px * var(--z)); }
+
+  /* Claw'd: a crew roams the shelf, two of them turn pages. Pixel art on a 12x8 grid: 8x6 body, 2x2 arms, 1x1 eyes, four 1x2 legs. */
+  .clawd { position: fixed; left: 0; top: 0; width: 72px; height: 72px; z-index: 5; display: none; cursor: grab; touch-action: none; user-select: none; }
+  .clawd .face { width: 100%; height: 100%; }
+  .clawd.left .face { transform: scaleX(-1); }
+  .clawd svg { width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
+  .clawd.walk svg { animation: bob .24s steps(1) infinite; }
+  @keyframes bob { 50% { transform: translateY(-3px); } }
+  .clawd.walk .legs-a { animation: step .24s steps(1) infinite; }
+  .clawd.walk .legs-b { animation: step .24s steps(1) infinite -.12s; }
+  @keyframes step { 50% { transform: translateY(-.6px); } }
+  .clawd .arm { transition: transform .1s steps(2); }
+  .clawd.grab .arm-r, .clawd.carry .arm, .clawd.cheer .arm { transform: translateY(-2px); }
+  .clawd .held, .clawd .happy-eyes { display: none; }
+  .clawd.carry .held { display: inline; }
+  .clawd.happy .happy-eyes, .clawd.grabbed .happy-eyes { display: inline; }
+  .clawd.happy .eyes, .clawd.grabbed .eyes { display: none; }
+  /* Picked up: he dangles from your hand, sways side to side, kicks his legs and flails his arms, eyes squeezed shut. */
+  .clawd.grabbed { cursor: grabbing; z-index: 6; }
+  .clawd.grabbed svg { animation: squirm .2s steps(1) infinite; transform-origin: 50% 20%; }
+  @keyframes squirm { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
+  .clawd.grabbed .legs-a, .clawd.grabbed .arm-l { animation: kick .12s steps(1) infinite; }
+  .clawd.grabbed .legs-b, .clawd.grabbed .arm-r { animation: kick .12s steps(1) infinite -.06s; }
+  @keyframes kick { 50% { transform: translateY(-1px); } }
+  .clawd .eyes { animation: blink 4s steps(1) infinite; transform-origin: 0 1.5px; }
+  @keyframes blink { 96% { transform: scaleY(.15); } 98% { transform: none; } }
+
+  dialog { border: 0; border-radius: 10px; padding: 22px; width: min(460px, 92vw); background: var(--paper); color: var(--ink); }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  dialog h2 { margin: 0 0 14px; font: 600 20px Georgia, serif; }
+  dialog label { display: block; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+  dialog input, dialog select { display: block; width: 100%; margin-top: 4px; padding: 8px; font: inherit; border: 1px solid #d6ccba; border-radius: 6px; background: #fff; color: var(--ink); }
+  dialog .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+  dialog .row button[value="cancel"] { background: transparent; }
+</style>
+</head>
+<body>
+<main id="shelfview">
+  <header><div><p id="hello"></p><h1>My bookshelf</h1></div></header>
+  <div id="shelf"></div>
+</main>
+
+<section id="reader">
+  <header>
+    <button id="back">← Shelf</button>
+    <h1 id="title"></h1>
+    <button id="yt">+ YouTube</button>
+    <button id="add">+ Add pages</button>
+    <input id="file" type="file" multiple hidden>
+  </header>
+  <div id="stage">
+    <div id="spread">
+      <article class="sheet" id="left"></article>
+      <article class="sheet" id="right"></article>
+    </div>
+  </div>
+  <footer>
+    <button id="prev" aria-label="Previous pages">‹ Prev</button>
+    <span id="pos" aria-live="polite"></span>
+    <button id="next" aria-label="Next pages">Next ›</button>
+  </footer>
+</section>
+
+<template id="clawd"><div class="clawd" aria-hidden="true"><div class="face">
+  <svg viewBox="0 -4 12 12">
+    <rect x="1" y="7.8" width="10" height=".5" fill="rgba(0,0,0,.3)"/>
+    <g class="held"><rect x=".5" y="-3" width="11" height="3"/><rect x=".5" y="-3" width="1" height="3" fill="rgba(0,0,0,.25)"/></g>
+    <g fill="#d77757">
+      <g class="legs-a"><rect x="2" y="6" width="1" height="2"/><rect x="7" y="6" width="1" height="2"/></g>
+      <g class="legs-b"><rect x="4" y="6" width="1" height="2"/><rect x="9" y="6" width="1" height="2"/></g>
+      <rect class="arm arm-l" x="0" y="2" width="2" height="2"/>
+      <rect class="arm arm-r" x="10" y="2" width="2" height="2"/>
+      <rect x="2" y="0" width="8" height="6"/>
+    </g>
+    <g class="eyes" fill="#000"><rect x="3" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/></g>
+    <path class="happy-eyes" d="M3 .9l1 .6-1 .6M9 .9l-1 .6 1 .6" stroke="#000" stroke-width=".4" fill="none"/>
+  </svg>
+</div></div></template>
+
+<div id="focus" hidden role="dialog" aria-label="Page close-up">
+  <div class="bar">
+    <button id="fprev" aria-label="Previous page">‹</button>
+    <span id="fpos"></span>
+    <button id="fnext" aria-label="Next page">›</button>
+    <span class="sp"></span>
+    <button id="zout" aria-label="Zoom out">−</button>
+    <button id="zlvl" title="Reset zoom">100%</button>
+    <button id="zin" aria-label="Zoom in">+</button>
+    <button id="fclose">✕ Close</button>
+  </div>
+  <div id="fscroll"><article class="sheet" id="fsheet"></article></div>
+</div>
+
+<dialog id="ytdialog">
+  <form method="dialog">
+    <h2>Add a YouTube video</h2>
+    <label>Link<input id="yturl" type="url" required placeholder="https://www.youtube.com/watch?v=…"></label>
+    <label>Save as
+      <select id="ytformat">
+        <option value="mp4">MP4 (recommended)</option>
+        <option value="m4v">M4V</option>
+        <option value="webm">WebM</option>
+        <option value="mkv">MKV</option>
+        <option value="mov">MOV</option>
+        <option value="ogv">OGV (slow: re-encodes the whole video)</option>
+      </select>
+    </label>
+    <div class="row"><button value="cancel" formnovalidate>Cancel</button><button value="ok">Download</button></div>
+  </form>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const enc = encodeURIComponent;
+const el = (tag, cls, text) => Object.assign(document.createElement(tag), { className: cls || '', textContent: text || '' });
+const label = page => page.replace(/^\d+ /, '').replace(/\.[^.]+$/, '');
+const color = name => { let h = 0; for (const c of name) h = (h * 31 + c.codePointAt(0)) % 360; return `hsl(${h} 42% 32%)`; };
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'X-Notebooks': '1' } });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  return j;
+}
+
+// at: which spread is open. 0 = cover, n = pages 2n-1 (left) and 2n (right), counting pages from 1.
+let book = null, pages = [], at = 0, busy = false, fpage = 0, zoom = 1;
+const spreads = () => Math.ceil(pages.length / 2);
+const spreadOf = n => Math.ceil(n / 2);
+const motion = () => !matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+// Resolve when an animation ends, or a little after its duration if the window isn't drawing frames (minimised, hidden).
+const ended = (anim, ms) => Promise.race([anim.finished.catch(() => {}), wait(ms + 150)]);
+
+// Each Claw'd walks around in screen coordinates; (x, y) is where his hands are.
+const place = (x, y) => `translate(${x - 36}px, ${y - 42}px)`;  // hands sit at the middle of his arms
+const pick = a => a[Math.floor(Math.random() * a.length)];
+class Clawd {
+  constructor() {
+    this.el = $('#clawd').content.firstElementChild.cloneNode(true);
+    document.body.append(this.el);
+    this.x = this.y = this.run = 0;
+  }
+  show(on) { this.el.style.display = on ? 'block' : 'none'; }
+  shown() { return this.el.style.display === 'block'; }
+  // Where he is right now, also halfway through a walk, so a new move starts there instead of jumping.
+  here() { const m = new DOMMatrix(getComputedStyle(this.el).transform); return [m.m41 + 36, m.m42 + 42]; }
+  moveTo(x, y, ms = 0) {
+    const [hx, hy] = this.here();
+    this.el.getAnimations().forEach(a => a.cancel());
+    // only turn on a real sideways move: computed positions are rounded, so x vs hx alone flipped him at random mid-hop
+    if (Math.abs(x - hx) > 1) this.el.classList.toggle('left', x < hx);
+    this.x = x; this.y = y;
+    this.el.style.transform = place(x, y);
+    if (!ms || !motion()) return Promise.resolve();
+    return ended(this.el.animate([{ transform: place(hx, hy) }, { transform: place(x, y) }], { duration: ms, easing: 'ease-in-out' }), ms);
+  }
+  async walkTo(x, y, ms = Math.max(300, Math.hypot(x - this.x, y - this.y) * 6)) {
+    const run = ++this.run;
+    this.el.classList.add('walk');
+    await this.moveTo(x, y, ms);
+    if (run === this.run) this.el.classList.remove('walk');
+  }
+  async hop(h = 12, alive = () => true) {
+    const { x, y } = this;
+    await this.moveTo(x, y - h, 140);
+    if (alive()) await this.moveTo(x, y, 140);
+  }
+  face(left) { this.el.classList.toggle('left', left); }
+  pose(...cls) { this.el.classList.remove('grab', 'carry', 'cheer', 'happy'); this.el.classList.add(...cls); }
+  stop() { this.run++; this.el.classList.remove('walk'); this.pose(); this.moveTo(...this.here()); }
+}
+const lead = new Clawd(), mate = new Clawd();  // the two who turn pages together
+
+// The shelf crew roams around, greets each other and plays tag. Every new book is built by all of them.
+const crew = Array.from({ length: 5 }, () => new Clawd());
+let crewGen = 0;  // bumped to stop the crew's current games; each script checks it before every next move
+const spot = near => {
+  const [x, y] = near ? [near[0] + (Math.random() - .5) * 520, near[1] + (Math.random() - .5) * 360] : [Math.random() * innerWidth, Math.random() * innerHeight];
+  return [Math.min(Math.max(x, 60), innerWidth - 60), Math.min(Math.max(y, 120), innerHeight - 50)];
+};
+function startCrew() {
+  const g = ++crewGen;
+  if (!motion()) return;
+  for (const c of crew) {
+    if (!c.shown()) { c.moveTo(...spot()); c.show(true); }
+    c.engaged = null;
+    c.pose();  // an interrupted game may have left arms up or happy eyes
+    roam(c, g);
+  }
+}
+
+// Grab any Claw'd and drag him around; he squirms until you let go, then lands with a bounce.
+let building = false;
+for (const c of [lead, mate, ...crew]) c.el.onpointerdown = e => {
+  if (building || (busy && (c === lead || c === mate))) return;
+  e.preventDefault();
+  c.el.setPointerCapture(c.pointer = e.pointerId);
+  c.stop();
+  c.held = true;
+  c.el.classList.add('grabbed');
+  if (crew.includes(c)) startCrew();  // ends whatever game he was in; the others carry on
+  const dx = c.x - e.clientX, dy = c.y - e.clientY;
+  c.el.onpointermove = e => c.moveTo(e.clientX + dx, e.clientY + dy);
+  // also fires when he is hidden mid-grab (leaving the shelf), so he never stays stuck "held"
+  c.el.onlostpointercapture = async () => {
+    c.el.onpointermove = c.el.onlostpointercapture = null;
+    c.el.classList.remove('grabbed');
+    if (c.shown()) await c.hop(10);
+    if (c.el.classList.contains('grabbed')) return;  // picked up again mid-bounce
+    c.held = false;
+    if (book && (c === lead || c === mate) && !busy) c.walkTo(...(c === lead ? home() : home2()));
+  };
+};
+function stopCrew(hide) {
+  crewGen++;
+  for (const c of crew) { c.stop(); c.engaged = null; if (hide) c.show(false); }
+}
+async function roam(c, g) {
+  await wait(Math.random() * 1500);  // don't all set off at once
+  while (g === crewGen) {
+    if (c.held) { await wait(300); continue; }
+    if (c.engaged) { await c.engaged; continue; }
+    const others = crew.filter(o => o !== c && !o.engaged && !o.held), r = Math.random();
+    if (r < .3 && others.length) await together(c, pick(others), pick([greet, tag]), () => g === crewGen);
+    else if (r < .75) await c.walkTo(...spot());
+    else await wait(800 + Math.random() * 2000);
+  }
+}
+// Marks both as busy so their own roaming waits until the game is over.
+function together(a, b, game, alive) {
+  const p = game(a, b, alive).finally(() => a.engaged = b.engaged = null);
+  a.engaged = b.engaged = p;
+  return p;
+}
+// Two walk up to each other, face to face, and bounce with their arms up.
+async function greet(a, b, alive) {
+  const [ax, ay] = a.here(), [bx, by] = b.here(), mx = (ax + bx) / 2, my = (ay + by) / 2;
+  await Promise.all([a.walkTo(mx - 30, my), b.walkTo(mx + 30, my)]);
+  if (!alive()) return;
+  a.face(false); b.face(true);
+  a.pose('happy', 'cheer'); b.pose('happy', 'cheer');
+  for (let i = 0; i < 2 && alive(); i++) await Promise.all([a.hop(12, alive), b.hop(12, alive)]);
+  await wait(300);
+  if (alive()) { a.pose(); b.pose(); }
+}
+// a is "it": b runs off, a chases close behind, three times; then both laugh.
+async function tag(a, b, alive) {
+  a.pose('cheer');
+  let side = 0;
+  for (let i = 0; i < 3; i++) {
+    const [x, y] = spot(b.here()), flee = b.walkTo(x, y, 700);
+    await wait(220);
+    if (!alive()) return;
+    side = a.here()[0] < x ? -34 : 34;
+    await Promise.all([flee, a.walkTo(x + side, y, 700)]);
+    if (!alive()) return;
+  }
+  a.face(side > 0); b.face(side < 0);
+  a.pose('happy'); b.pose('happy');
+  await Promise.all([a.hop(12, alive), b.hop(12, alive)]);
+  await wait(300);
+  if (alive()) { a.pose(); b.pose(); }
+}
+
+// Layout boxes (offset*) ignore transforms, so a page caught mid-turn still reports where it lies flat.
+const box = id => {
+  const e = $(id), p = e.offsetParent.getBoundingClientRect(), left = p.left + e.offsetLeft, top = p.top + e.offsetTop;
+  return { left, right: left + e.offsetWidth, top, bottom: top + e.offsetHeight };
+};
+const corner = side => { const r = box(`#${side}`); return side === 'right' ? [r.right - 8, r.bottom - 10] : [r.left + 8, r.bottom - 10]; };
+const home = () => { const r = box('#right'); return [r.right - 40, r.bottom - 4]; };
+const home2 = () => { const [x, y] = home(); return [x - 70, y]; };
+
+async function showShelf(arriving) {
+  book = null;
+  lead.show(false); mate.show(false);
+  $('#reader').style.display = 'none';
+  $('#shelfview').style.display = 'block';
+  const books = await api('/api/books');
+  const cards = books.map(b => {
+    const c = el('button', 'book');
+    c.style.background = color(b.name);
+    c.append(el('span', 't', b.name), el('span', 'n', `${b.pages} page${b.pages === 1 ? '' : 's'}`));
+    c.onclick = () => openBook(b.name);
+    if (b.name === arriving) c.style.transform = 'scale(0)';  // the crew builds this one
+    return c;
+  });
+  const add = el('button', 'book new', '+ New book');
+  add.onclick = newBook;
+  $('#shelf').replaceChildren(...cards, add);
+  startCrew();
+}
+
+async function newBook() {
+  const name = prompt('Name of the new book (for example: History)');
+  if (!name || !name.trim()) return;
+  try { await api(`/api/books?name=${enc(name)}`, { method: 'POST' }); }
+  catch (e) { return alert(e.message); }
+  await showShelf(name.trim());
+  await buildBook(name.trim());
+  openBook(name.trim());
+}
+
+// The whole crew runs over carrying parts in the book's colour, gathers round and hammers it together; it grows with every round.
+async function buildBook(name) {
+  const card = [...$('#shelf').children].find(c => c.querySelector('.t')?.textContent === name);
+  if (!card) return;
+  if (motion()) {
+    building = true;
+    crew.forEach(c => c.held && c.el.releasePointerCapture(c.pointer));  // drop anyone you're holding: everybody builds
+    stopCrew();
+    card.scrollIntoView({ block: 'nearest' });
+    const r = card.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const ring = [[x - 100, y + 20], [x + 100, y + 20], [x - 60, y + 125], [x + 60, y + 125], [x, y - 140]]
+      .map(([px, py]) => [Math.min(Math.max(px, 40), innerWidth - 40), Math.max(py, 30)]);  // stay inside the window
+    crew.forEach(c => { c.el.querySelector('.held').style.fill = color(name); c.pose('carry'); });
+    await Promise.all(crew.map((c, i) => c.walkTo(...ring[i], 900)));
+    crew.forEach(c => { c.pose('grab'); c.face(c.x > x); });
+    for (let k = 1; k <= 4; k++) {
+      await Promise.all(crew.map((c, i) => wait(i * 70).then(() => c.hop(8))));
+      card.style.transform = `scale(${k / 4})`;  // .book's transition eases each step
+      await wait(120);
+    }
+    crew.forEach(c => c.pose('happy', 'cheer'));  // >< eyes, arms up: done!
+    await Promise.all(crew.map(c => c.hop(16)));
+    await wait(350);
+    building = false;
+  }
+  card.style.transform = '';
+}
+
+async function openBook(name) {
+  book = name;
+  pages = await api(`/api/book?name=${enc(name)}`);
+  at = 0;
+  $('#title').textContent = name;
+  $('#shelfview').style.display = 'none';
+  $('#reader').style.display = 'flex';
+  draw();
+  stopCrew(true);
+  for (const [c, pos] of [[lead, home()], [mate, home2()]]) { c.stop(); c.moveTo(...pos); c.face(false); c.show(true); }
+}
+
+// Show page n (counting from 1) on a sheet; a blank sheet if there is no such page.
+async function fill(sheet, n) {
+  const page = pages[n - 1], token = sheet.token = Symbol();
+  sheet.className = 'sheet';
+  sheet.style.background = '';
+  sheet.scrollTop = 0;
+  sheet.dataset.page = n;
+  if (!page) { sheet.classList.add('blank'); sheet.replaceChildren(); return; }
+  const title = el('div', 'ptitle', `${n} · ${label(page)}`);
+  sheet.replaceChildren(title, el('p', 'note', 'Loading page…'));
+  let p;
+  try { p = await api(`/api/page?book=${enc(book)}&page=${enc(page)}`); }
+  catch (e) { p = { kind: 'error', error: e.message }; }
+  if (sheet.token !== token) return;  // the sheet moved on to another page while this one was loading
+  const body = p.kind === 'images' ? p.images.map(src => Object.assign(el('img'), { src, alt: '' }))
+             : p.kind === 'video' ? [Object.assign(el('video'), { src: p.url, controls: true, preload: 'metadata' })]
+             : p.kind === 'text' ? [el('pre', '', p.text)]
+             : [el('p', 'note', p.error || 'This file type can’t be shown. It is still saved in the book’s folder.')];
+  sheet.replaceChildren(title, ...body);
+}
+
+function draw() {
+  const L = $('#left'), R = $('#right'), first = 2 * at - 1, last = Math.min(2 * at, pages.length);
+  $('#pos').textContent = !at ? 'Cover' : first === last ? `Page ${first} of ${pages.length}` : `Pages ${first}–${last} of ${pages.length}`;
+  $('#prev').disabled = at === 0;
+  $('#next').disabled = at >= spreads();
+  if (!at) {
+    L.style.visibility = 'hidden';
+    L.token = R.token = null;
+    L.replaceChildren();
+    R.className = 'sheet cover';
+    R.style.background = color(book);
+    R.replaceChildren(el('div', 'ct', book),
+      el('div', 'cn', pages.length ? `${pages.length} page${pages.length === 1 ? '' : 's'} · click or press → to open` : 'No pages yet. Click “+ Add pages” or drop files here.'));
+    return;
+  }
+  L.style.visibility = '';
+  fill(L, first);
+  fill(R, first + 1);
+}
+
+// Two Claw'ds take the page by its outer edge, one low and one high up, carry it over the spine together
+// and lay it down on the other side.
+async function flip(d) {
+  const to = at + d;
+  if (busy || lead.held || mate.held || to < 0 || to > spreads()) return;  // they can't turn a page while you hold one
+  busy = true;
+  if (!motion()) { at = to; draw(); busy = false; return; }
+  const [out, inn, deg] = d > 0 ? [$('#right'), $('#left'), -90] : [$('#left'), $('#right'), 90];
+  const turn = deg => ({ transform: `rotateY(${deg}deg)` });
+  [out, inn].forEach(s => s.getAnimations().forEach(a => a.finish()));
+  const pg = box('#right'), h = pg.bottom - pg.top, up = h * 0.4;
+  const [[fx, fy], [dx, dy]] = d > 0 ? [corner('right'), corner('left')] : [corner('left'), corner('right')];
+  lead.pose(); mate.pose();
+  await Promise.all([lead.walkTo(fx, fy, d > 0 ? 250 : 600), mate.walkTo(fx, fy - up, d > 0 ? 400 : 700)]);
+  lead.pose('grab'); mate.pose('grab');
+  await wait(160);
+  await Promise.all([ended(out.animate([turn(0), turn(deg)], { duration: 380, easing: 'ease-in' }), 380),
+                     lead.moveTo(pg.left, pg.top + h * 0.45, 380), mate.moveTo(pg.left, pg.top + h * 0.1, 380)]);
+  at = to;
+  draw();
+  await Promise.all([ended(inn.animate([turn(-deg), turn(0)], { duration: 380, easing: 'ease-out' }), 380),
+                     lead.moveTo(dx, dy, 380), mate.moveTo(dx, dy - up, 380)]);
+  lead.pose('happy'); mate.pose('happy');  // a job well done
+  busy = false;
+  // back to their spots; the next flip can interrupt this, so only clear the pose if no new flip took over
+  for (const [c, pos] of [[lead, home()], [mate, home2()]]) c.walkTo(...pos, d > 0 ? 600 : 250).then(() => { if (!busy) c.pose(); });
+}
+
+function openFocus(n) {
+  document.querySelectorAll('#spread video').forEach(v => v.pause());
+  fpage = n;
+  $('#focus').hidden = false;
+  setZoom(zoom);
+  showFocus();
+}
+
+function showFocus() {
+  $('#fpos').textContent = `Page ${fpage} of ${pages.length}`;
+  $('#fprev').disabled = fpage <= 1;
+  $('#fnext').disabled = fpage >= pages.length;
+  fill($('#fsheet'), fpage);
+  $('#fscroll').scrollTo(0, 0);
+}
+
+function closeFocus() {
+  $('#focus').hidden = true;
+  $('#fsheet').token = null;
+  $('#fsheet').replaceChildren();  // also stops a playing video
+  if (spreadOf(fpage) !== at) { at = spreadOf(fpage); draw(); }  // land on the spread of the last page viewed
+}
+
+// Zoom by widening the sheet (images and video follow its width) and scaling text; CSS zoom differs between engines.
+function setZoom(z) {
+  zoom = Math.min(4, Math.max(0.5, Math.round(z * 100) / 100));
+  const fit = Math.min(1100, $('#fscroll').clientWidth - 40), s = $('#fsheet');
+  s.style.width = `${Math.round(fit * zoom)}px`;
+  s.style.setProperty('--z', zoom);
+  $('#zlvl').textContent = `${Math.round(zoom * 100)}%`;
+}
+
+async function afterAdding(first) {
+  pages = await api(`/api/book?name=${enc(book)}`);
+  at = spreadOf(Math.min(first, pages.length));
+  draw();
+}
+
+async function upload(files) {
+  if (!files.length) return;
+  const first = pages.length + 1;
+  for (const f of files) {
+    $('#pos').textContent = `Adding ${f.name}…`;
+    try { await api(`/api/upload?book=${enc(book)}&name=${enc(f.name)}`, { method: 'POST', body: f }); }
+    catch (e) { alert(`${f.name}: ${e.message}`); }
+  }
+  afterAdding(first);
+}
+
+async function addYouTube(url, format) {
+  const first = pages.length + 1, btn = $('#yt');
+  btn.disabled = true;
+  $('#pos').textContent = 'Downloading from YouTube… (can take a few minutes)';
+  try { await api(`/api/youtube?book=${enc(book)}&url=${enc(url)}&format=${format}`, { method: 'POST' }); }
+  catch (e) { alert(`Couldn’t add the video: ${e.message}`); }
+  btn.disabled = false;
+  afterAdding(first);
+}
+
+$('#back').onclick = showShelf;
+$('#yt').onclick = () => { $('#yturl').value = ''; $('#ytdialog').returnValue = ''; $('#ytdialog').showModal(); };
+$('#ytdialog').onclose = () => { if ($('#ytdialog').returnValue === 'ok') addYouTube($('#yturl').value.trim(), $('#ytformat').value); };
+$('#prev').onclick = () => flip(-1);
+$('#next').onclick = () => flip(1);
+$('#add').onclick = () => $('#file').click();
+$('#file').onchange = e => { upload([...e.target.files]); e.target.value = ''; };
+for (const s of [$('#left'), $('#right')]) s.onclick = e => {
+  if (!at) return flip(1);  // clicking the cover opens the book
+  if (s.classList.contains('blank') || e.target.closest('video') || getSelection().toString()) return;
+  openFocus(Number(s.dataset.page));
+};
+$('#fprev').onclick = () => { fpage--; showFocus(); };
+$('#fnext').onclick = () => { fpage++; showFocus(); };
+$('#fclose').onclick = closeFocus;
+$('#zin').onclick = () => setZoom(zoom + 0.25);
+$('#zout').onclick = () => setZoom(zoom - 0.25);
+$('#zlvl').onclick = () => setZoom(1);
+$('#fscroll').addEventListener('wheel', e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  setZoom(zoom - Math.sign(e.deltaY) * 0.1);
+}, { passive: false });
+addEventListener('resize', () => {
+  if (!$('#focus').hidden) setZoom(zoom);
+  if (book && !busy) { lead.moveTo(...home()); mate.moveTo(...home2()); }
+});
+const reader = $('#reader');
+reader.ondragover = e => { e.preventDefault(); reader.classList.add('drag'); };
+reader.ondragleave = () => reader.classList.remove('drag');
+reader.ondrop = e => { e.preventDefault(); reader.classList.remove('drag'); upload([...e.dataTransfer.files]); };
+document.onkeydown = e => {
+  if (!book || e.target.tagName === 'VIDEO' || $('#ytdialog').open) return;  // arrows on a focused video seek it instead of turning the page
+  if (!$('#focus').hidden) {
+    if (e.key === 'Escape') closeFocus();
+    else if (e.key === 'ArrowRight' && fpage < pages.length) { fpage++; showFocus(); }
+    else if (e.key === 'ArrowLeft' && fpage > 1) { fpage--; showFocus(); }
+    else if (e.key === '+' || e.key === '=') setZoom(zoom + 0.25);
+    else if (e.key === '-') setZoom(zoom - 0.25);
+    return;
+  }
+  if (e.key === 'ArrowRight') flip(1);
+  else if (e.key === 'ArrowLeft') flip(-1);
+  else if (e.key === 'Escape') showShelf();
+};
+// Greeting on the shelf: morning until noon, noon for that hour, afternoon until 5 pm, evening after.
+const hello = () => {
+  const h = new Date().getHours();
+  $('#hello').textContent = `Good ${h >= 5 && h < 12 ? 'morning' : h === 12 ? 'noon' : h > 12 && h < 17 ? 'afternoon' : 'evening'}, twin`;
+};
+hello();
+setInterval(hello, 60000);
+showShelf();
+</script>
+</body>
+</html>
