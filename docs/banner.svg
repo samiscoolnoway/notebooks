@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" shape-rendering="crispEdges">
+  <!-- Claw'd is drawn on the app's 12x8 pixel grid and scaled 8x. -->
+  <style>
+    .title { font: 700 66px Georgia, 'DejaVu Serif', serif; fill: #f2ebe0; }
+    .sub { font: italic 21px Georgia, 'DejaVu Serif', serif; fill: #f0c27a; }
+    .walk { animation: walk 11s linear infinite; }
+    @keyframes walk { from { transform: translateX(-110px); } to { transform: translateX(1000px); } }
+    .bob { animation: bob .48s steps(1) infinite; }
+    @keyframes bob { 50% { transform: translateY(-5px); } }
+    .step-a { animation: step .48s steps(1) infinite; }
+    .step-b { animation: step .48s steps(1) infinite -.24s; }
+    @keyframes step { 50% { transform: translateY(-.5px); } }
+    .hop { animation: hop 1.6s steps(1) infinite; }
+    .hop2 { animation: hop 1.6s steps(1) infinite -.1s; }
+    @keyframes hop { 50% { transform: translateY(-14px); } 60% { transform: none; } 70% { transform: translateY(-14px); } 80% { transform: none; } }
+    .blink { animation: blink 4s steps(1) infinite; }
+    @keyframes blink { 96% { transform: translateY(1.275px) scaleY(.15); } 98% { transform: none; } }  /* squash around the eyes' middle row */
+  </style>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="0" r="95%">
+      <stop offset="0" stop-color="#40352d"/><stop offset=".75" stop-color="#1c1815"/>
+    </radialGradient>
+    <g id="shadow"><rect x="1" y="7.8" width="10" height=".5" fill="rgba(0,0,0,.35)"/></g>
+    <g id="core" fill="#d77757"><rect x="0" y="2" width="2" height="2"/><rect x="10" y="2" width="2" height="2"/><rect x="2" y="0" width="8" height="6"/></g>
+    <g id="legs-a" fill="#d77757"><rect x="2" y="6" width="1" height="2"/><rect x="7" y="6" width="1" height="2"/></g>
+    <g id="legs-b" fill="#d77757"><rect x="4" y="6" width="1" height="2"/><rect x="9" y="6" width="1" height="2"/></g>
+    <g id="eyes" fill="#000"><rect x="3" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/></g>
+    <path id="happy" d="M3 .9l1 .6-1 .6M9 .9l-1 .6 1 .6" stroke="#000" stroke-width=".4" fill="none" shape-rendering="auto"/>
+    <g id="cheer" fill="#d77757"><rect x="0" y="0" width="2" height="2"/><rect x="10" y="0" width="2" height="2"/><rect x="2" y="0" width="8" height="6"/></g>
+  </defs>
+
+  <rect width="960" height="300" fill="url(#bg)"/>
+  <text class="title" x="48" y="112">Notebooks</text>
+  <text class="sub" x="50" y="150">Your notes, kept as books.</text>
+  <text class="sub" x="50" y="178">Pages turned by a crew of Claw'ds.</text>
+
+  <!-- the shelf -->
+  <g transform="translate(600 92)">
+    <rect x="0" y="12" width="40" height="126" rx="3" fill="hsl(130 42% 32%)"/><rect x="0" y="12" width="7" height="126" fill="rgba(0,0,0,.25)"/>
+    <rect x="46" y="0" width="44" height="138" rx="3" fill="hsl(173 42% 32%)"/><rect x="46" y="0" width="7" height="138" fill="rgba(0,0,0,.25)"/>
+    <rect x="96" y="20" width="36" height="118" rx="3" fill="hsl(246 42% 32%)"/><rect x="96" y="20" width="7" height="118" fill="rgba(0,0,0,.25)"/>
+    <rect x="138" y="6" width="42" height="132" rx="3" fill="hsl(334 42% 32%)"/><rect x="138" y="6" width="7" height="132" fill="rgba(0,0,0,.25)"/>
+    <rect x="186" y="16" width="38" height="122" rx="3" fill="hsl(208 42% 32%)"/><rect x="186" y="16" width="7" height="122" fill="rgba(0,0,0,.25)"/>
+    <rect x="230" y="28" width="40" height="110" rx="3" fill="hsl(78 42% 32%)"/><rect x="230" y="28" width="7" height="110" fill="rgba(0,0,0,.25)"/>
+    <rect x="-14" y="138" width="300" height="10" fill="#5a4a3e"/><rect x="-14" y="148" width="300" height="4" fill="#3a2f27"/>
+  </g>
+
+  <!-- two of them saying hi -->
+  <g class="hop"><g transform="translate(372 196) scale(8)"><use href="#shadow"/><use href="#cheer"/><use href="#legs-a"/><use href="#legs-b"/><use href="#happy"/></g></g>
+  <g class="hop2"><g transform="translate(560 196) scale(-8 8)"><use href="#shadow"/><use href="#cheer"/><use href="#legs-a"/><use href="#legs-b"/><use href="#happy"/></g></g>
+
+  <!-- one carrying a new book across -->
+  <g class="walk"><g class="bob"><g transform="translate(0 220) scale(8)">
+    <use href="#shadow"/>
+    <rect x=".5" y="-3" width="11" height="3" fill="hsl(28 42% 32%)"/><rect x=".5" y="-3" width="1" height="3" fill="rgba(0,0,0,.25)"/>
+    <use href="#cheer"/>
+    <g class="step-a"><use href="#legs-a"/></g><g class="step-b"><use href="#legs-b"/></g>
+    <g class="blink"><use href="#eyes"/></g>
+  </g></g></g>
+
+  <!-- and one watching from the corner -->
+  <g transform="translate(40 222) scale(8)"><use href="#shadow"/><use href="#core"/><use href="#legs-a"/><use href="#legs-b"/><g class="blink"><use href="#eyes"/></g></g>
+</svg>
