@@ -4,8 +4,8 @@
 
 <p align="center">
   <b>A Linux app that keeps your academic notes as books on a shelf.</b><br>
-  Every subject is a book. Every page is one of your documents, as long as that document needs.<br>
-  And a little crew of Claw'ds lives on the shelf, turning your pages and building every new book by hand.
+  Each subject gets a book, and each page holds one of your documents, however long it runs.<br>
+  A small crew of Claw'ds lives on the shelf too. They turn your pages for you and hammer every new book together by hand.
 </p>
 
 <p align="center">
@@ -24,51 +24,51 @@
 
 ## ✨ What it does
 
-📚 **Books, not folders.** Make a book for each subject (History, Physics, Chemistry…). Each one gets its own colour on the shelf.
+📚 **A book per subject.** History, Physics, Chemistry, whatever you're taking. Each one sits on the shelf in its own colour.
 
-📖 **Opens like a real book.** You see a cover first, then two pages side by side, split at the spine. Page 1 is on the left and page 2 on the right.
+📖 **Opens like a real book.** First the cover, then two pages side by side with the spine down the middle. Page 1 goes on the left, page 2 on the right.
 
-📄 **One document per page, any length.** A 40-page PDF is one long page you scroll down. A short note is a short page. Nothing gets cut off.
+📄 **One document per page, any length.** Drop in a 40-page PDF and you get one long page to scroll through. A three-line note stays short. Nothing gets cropped.
 
-🔍 **Close-up view.** Click any page to see it big, then zoom from 50% to 400%.
+🔍 **Close-up view.** Click a page to open it big. Zoom runs from 50% up to 400%.
 
-🎬 **Videos are pages too.** Drop in a lecture recording and it plays right on the page, with seeking.
+🎬 **Videos are pages too.** Drag in a lecture recording and it plays right there on the page. You can skip around in it.
 
-▶️ **YouTube import.** Paste a link, pick MP4, M4V, WebM, MKV, MOV or OGV, and it lands in your book as a new page.
+▶️ **YouTube import.** Paste a link and pick a format (MP4, M4V, WebM, MKV, MOV or OGV). The video shows up in your book as a new page.
 
-🦀 **A crew of Claw'ds.** Five of them roam your shelf, and two of them turn every page for you. [Meet them below.](#-meet-the-crew)
+🦀 **A crew of Claw'ds.** Five of them hang around your shelf, and two handle all the page turning. [Meet them below.](#-meet-the-crew)
 
-☀️ **It says hi.** "Good morning, twin", "Good noon, twin", "Good afternoon, twin" or "Good evening, twin", depending on the time.
+☀️ **It says hi.** Depending on the hour you get "Good morning, twin", "Good noon, twin", "Good afternoon, twin" or "Good evening, twin".
 
 ## 📸 A look inside
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/book.png" alt="An open book with two pages side by side"><p align="center"><b>Two pages, split at the spine</b><br>Each page scrolls on its own.</p></td>
-    <td width="50%"><img src="docs/screenshots/turn.png" alt="Two Claw'ds holding the edge of a page as it turns"><p align="center"><b>Turning a page</b><br>One Claw'd grabs low, one grabs high, and they carry it over together.</p></td>
+    <td width="50%"><img src="docs/screenshots/book.png" alt="An open book with two pages side by side"><p align="center"><b>Two pages, split at the spine</b><br>Each one scrolls by itself.</p></td>
+    <td width="50%"><img src="docs/screenshots/turn.png" alt="Two Claw'ds holding the edge of a page as it turns"><p align="center"><b>Turning a page</b><br>One Claw'd takes the bottom corner, the other takes the top, and they walk it over together.</p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/closeup.png" alt="The close-up view of a PDF page with zoom controls"><p align="center"><b>Close-up view</b><br>Zoom in, flip through pages, press Esc to go back.</p></td>
-    <td width="50%"><img src="docs/screenshots/build.png" alt="Five Claw'ds in a ring around a small new book they are building"><p align="center"><b>Building a new book</b><br>The whole crew gathers round and hammers it together.</p></td>
+    <td width="50%"><img src="docs/screenshots/closeup.png" alt="The close-up view of a PDF page with zoom controls"><p align="center"><b>Close-up view</b><br>Zoom, flip pages, hit Esc to get out.</p></td>
+    <td width="50%"><img src="docs/screenshots/build.png" alt="Five Claw'ds in a ring around a small new book they are building"><p align="center"><b>Building a new book</b><br>The whole crew shows up and hammers it together.</p></td>
   </tr>
 </table>
 
 ## 🦀 Meet the crew
 
-Claw'd is Claude Code's little pixel mascot. Here he comes with friends.
+Claw'd is Claude Code's little pixel mascot. In this app he has four friends.
 
 | When… | the Claw'ds… |
 |---|---|
 | you're on the bookshelf | wander around, stop for a breather, blink now and then |
 | two of them bump into each other | walk up face to face, throw their arms up and bounce with happy `>` `<` eyes |
-| they're feeling playful | play tag: one runs off, the other chases right behind, three rounds, then they both laugh |
-| you make a new book | everyone runs over carrying parts in the book's colour, forms a ring and hammers it together. The book grows with every round, they cheer, and it opens |
-| you turn a page | two of them walk to the page corner, grab it (one low, one high), carry it over the spine, lay it down, and smile |
-| you **grab one** with the mouse | he dangles from your hand, sways, kicks his legs, flails his arms and squeezes his eyes shut until you let go. Then he lands with a bounce and runs back to what he was doing |
+| they're feeling playful | play tag. One runs off and the other chases close behind. After three rounds they both laugh |
+| you make a new book | everyone runs in carrying parts in the book's colour, forms a ring and hammers away. The book grows a little each round, they cheer when it's done, and it opens |
+| you turn a page | two of them walk to the page corner, grab it (one low, one high), carry it over the spine, lay it down and smile |
+| you **grab one** with the mouse | he dangles from the cursor, sways, kicks his legs, flails his arms and squeezes his eyes shut until you let go. Then he drops, bounces and runs back to whatever he was doing |
 
 > [!TIP]
-> Pages won't turn while you're holding one of the two page-turners. They need both hands free.
-> If your system has **reduce motion** turned on, the shelf crew stays out of sight and pages change instantly.
+> Pages won't turn while you're holding one of the two page-turners. They need both hands for the job.
+> With **reduce motion** switched on in your system settings, the shelf crew stays hidden and pages change instantly.
 
 ## 🚀 Install
 
@@ -78,13 +78,13 @@ cd notebooks
 ./install.sh
 ```
 
-Then open **Notebooks** from your app menu (you'll find it under *Education*). That's it.
+Then find **Notebooks** in your app menu under *Education* and open it.
 
-`install.sh` copies the app to `~/.local/share/notebooks-app` and adds a menu entry. It doesn't need root.
+`install.sh` copies the app into `~/.local/share/notebooks-app` and adds a menu entry. You don't need root.
 
 ### What it needs
 
-Debian/Ubuntu package names shown. Most desktops already have the first two.
+Package names below are for Debian and Ubuntu. Most desktops ship the first two already.
 
 | For | Package | |
 |---|---|---|
@@ -94,13 +94,13 @@ Debian/Ubuntu package names shown. Most desktops already have the first two.
 | Word, PowerPoint, Excel and LibreOffice files | `libreoffice` | for office documents |
 | YouTube import | `yt-dlp` (e.g. `pipx install yt-dlp`) and `ffmpeg` | for YouTube |
 
-No `pip install`, no virtualenv: the app only uses Python's standard library.
+The app only uses Python's standard library, so there's nothing to `pip install` and no virtualenv to set up.
 
 ## 🗂️ Using it
 
-**Adding pages:** open a book and click **+ Add pages**, or just drag files onto the book. Each file becomes the next page.
+**Adding pages:** open a book and click **+ Add pages**, or drag files straight onto it. Each file lands as the next page.
 
-**Adding a YouTube video:** click **+ YouTube**, paste the link and choose a format. MP4 is the safest choice. OGV has to re-encode the whole video, so it's slow. If the video is part of a playlist, only that one video is saved.
+**Adding a YouTube video:** click **+ YouTube**, paste the link and pick a format. MP4 is the safe bet. OGV re-encodes the whole video, which takes a while. A link from inside a playlist saves just that one video.
 
 ### What can go on a page
 
@@ -109,10 +109,10 @@ No `pip install`, no virtualenv: the app only uses Python's standard library.
 | Documents | `.pdf` | every PDF page as an image, top to bottom |
 | Office files | `.doc` `.docx` `.odt` `.rtf` `.ppt` `.pptx` `.odp` `.xls` `.xlsx` `.ods` | converted with LibreOffice, then shown like a PDF |
 | Images | `.png` `.jpg` `.jpeg` `.gif` `.webp` `.svg` `.bmp` | the image |
-| Videos | `.mp4` `.m4v` `.webm` `.mkv` `.mov` `.ogv` | a video player you can seek in |
+| Videos | `.mp4` `.m4v` `.webm` `.mkv` `.mov` `.ogv` | a video player you can skip around in |
 | Text | `.txt`, `.md`, anything else that's plain text | the text |
 
-Anything else is still saved in the book; it just can't be previewed.
+Other files still get saved in the book. You just won't see a preview.
 
 ### Keyboard
 
@@ -126,7 +126,7 @@ Anything else is still saved in the book; it just can't be previewed.
 
 ## 💾 Where your notes live
 
-Plain folders, nothing hidden away in a database:
+Everything is plain folders and files you can open yourself:
 
 ```
 ~/Notebooks/
@@ -138,13 +138,13 @@ Plain folders, nothing hidden away in a database:
     └── 002 Energy summary.txt
 ```
 
-Each book is a folder and each page is a file. The number at the front sets the page order, so you can rename, reorder, copy or back up your books with any file manager. Rendered page images are cached in a hidden `.pages` folder inside each book and rebuilt whenever the file changes.
+Each book is a folder and each page is a file inside it. The number at the start of the name sets the page order, so you can rename, reorder, copy or back up your books with any file manager you like. Page images get cached in a hidden `.pages` folder inside each book and rebuilt when the file changes.
 
-## 🔒 Private by design
+## 🔒 It stays on your computer
 
-The app runs a tiny web server that only listens on `127.0.0.1` (your own computer) and shows it in its own window. Nothing is uploaded anywhere. The only time it goes online is when you ask it to download a YouTube video.
+The app runs a tiny web server that only listens on `127.0.0.1` (your own computer) and shows it in its own window. Nothing gets uploaded. It only goes online when you ask it to download a YouTube video.
 
-It checks every request, so websites you visit can't read or change your books, and no file path can reach outside your Notebooks folder.
+Every request gets checked, so a website open in your browser can't read or change your books, and no file path can reach outside your Notebooks folder.
 
 ## 🛠️ For tinkerers
 
@@ -170,5 +170,5 @@ python3 test_app.py       # self-check (uses a temporary folder, never touches ~
 
 <p align="center">
   Built with <a href="https://claude.com/claude-code">Claude Code</a>. Claw'd is Claude Code's mascot, redrawn here in pixels.<br>
-  <sub>No Claw'ds were harmed in the making of this app. A few were picked up and squirmed a bit.</sub>
+  <sub>No Claw'ds were harmed in the making of this app. A few got picked up and squirmed a bit.</sub>
 </p>
