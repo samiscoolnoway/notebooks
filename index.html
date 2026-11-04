@@ -384,9 +384,9 @@ async function showShelf(arriving) {
   const cards = books.map(b => {
     const c = el('button', 'book');
     c.style.backgroundColor = color(b.name);
-    c.style.setProperty('--thick', Math.min(12, 3 + Math.ceil(b.pages / 3)));
+    c.style.setProperty('--thick', thick(b.pages));
     c.append(el('span', 't', b.name), el('span', 'n', `${b.pages} page${b.pages === 1 ? '' : 's'}`));
-    c.onclick = () => openBook(b.name);
+    c.onclick = () => takeOut(b.name, c, b.pages);
     if (b.name === arriving) c.style.transform = 'scale(0)';  // the crew builds this one
     return c;
   });
@@ -394,6 +394,56 @@ async function showShelf(arriving) {
   add.onclick = newBook;
   $('#shelf').replaceChildren(...cards, add);
   startCrew();
+}
+
+// Carrying a book between the shelf and the reader: a copy of the shelf book (150 × 210) at (x, y), scaled by s,
+// held by the two page-turning Claw'ds under its bottom corners.
+const thick = n => Math.min(12, 3 + Math.ceil(n / 3));  // page edges shown on a shelf book
+const flyAt = (x, y, s) => `translate(${x}px, ${y}px) scale(${s})`;
+const corners = ([x, y, s]) => [[x + 10 * s, y + 204 * s], [x + 140 * s, y + 204 * s]];
+const coverSpot = () => { const r = box('#right'), s = (r.bottom - r.top) / 210; return [r.left + (r.right - r.left - 150 * s) / 2, r.top, s]; };
+const shelfBook = name => [...document.querySelectorAll('#shelf .book')].find(c => c.querySelector('.t')?.textContent === name);
+function flyingBook(name, n, spot) {
+  const b = el('div', 'book');
+  b.style.cssText = `position: fixed; left: 0; top: 0; z-index: 4; transform-origin: 0 0; background-color: ${color(name)}; --thick: ${thick(n)}; transform: ${flyAt(...spot)}`;
+  b.append(el('span', 't', name), el('span', 'n', `${n} page${n === 1 ? '' : 's'}`));
+  document.body.append(b);
+  return b;
+}
+async function pickUp(spot) {
+  const [l, m] = corners(spot);
+  lead.pose(); mate.pose();
+  await Promise.all([lead.walkTo(...l, 500), mate.walkTo(...m, 500)]);
+  lead.face(false); mate.face(true);
+  lead.pose('cheer'); mate.pose('cheer');  // both arms up, holding it
+  await wait(200);
+}
+// book and carriers on the same curve and clock, so their hands stay at its corners
+async function carry(fly, from, to) {
+  const ms = Math.max(900, Math.hypot(to[0] - from[0], to[1] - from[1]) * 1.6), [l, m] = corners(to);
+  await Promise.all([tween(fly, flyAt, from, to, ms, ease.inOut), lead.walkTo(...l, ms), mate.walkTo(...m, ms)]);
+  lead.face(false); mate.face(true);
+}
+
+// Opening a book: the Claw'ds come in, take it off the shelf, carry it over and open it.
+async function takeOut(name, card, n) {
+  if (busy || leaving) return;
+  if (!motion()) return openBook(name);
+  busy = true;  // nobody grabs the carriers mid-carry
+  const r = card.getBoundingClientRect(), start = [r.left, r.top, 1], fly = flyingBook(name, n, start);
+  card.style.visibility = 'hidden';  // off the shelf
+  for (const [c, [x]] of [[lead, corners(start)[0]], [mate, corners(start)[1]]]) { c.stop(); c.moveTo(x, innerHeight + 60); c.show(true); }
+  await pickUp(start);
+  await openBook(name, true);
+  $('#right').style.visibility = 'hidden';  // the closed book shows once it is set down
+  await carry(fly, start, coverSpot());
+  $('#right').style.visibility = '';
+  fly.remove();
+  card.style.visibility = '';
+  lead.pose(); mate.pose();
+  busy = false;
+  if (spreads()) await flip(1);  // open it at the first pages
+  else for (const [c, pos] of [[lead, home()], [mate, home2()]]) c.walkTo(...pos);  // nothing in it yet
 }
 
 // Back to the shelf: the Claw'ds close the book, carry it over to its place on the shelf and put it there.
@@ -405,40 +455,24 @@ async function putAway() {
   const name = book;
   if (at > 0) await flip(-1, 0);
   busy = true;  // nobody grabs the carriers mid-carry
-  const from = box('#right'), k = (from.bottom - from.top) / 210;  // the closed cover; shelf books are 150 × 210
-  const fly = el('div', 'book');
-  fly.style.cssText = `position: fixed; left: 0; top: 0; z-index: 4; transform-origin: 0 0; background-color: ${color(name)}; --thick: ${Math.min(12, 3 + Math.ceil(pages.length / 3))}`;
-  fly.append(el('span', 't', name), el('span', 'n', `${pages.length} page${pages.length === 1 ? '' : 's'}`));
-  const start = [from.left + (from.right - from.left - 150 * k) / 2, from.top, k];
-  const hands = ([x, y, s]) => [[x + 10 * s, y + 204 * s], [x + 140 * s, y + 204 * s]];  // under its bottom corners
-  fly.style.transform = `translate(${start[0]}px, ${start[1]}px) scale(${k})`;
-  document.body.append(fly);
-  const cardOf = () => [...document.querySelectorAll('#shelf .book')].find(c => c.querySelector('.t')?.textContent === name);
-  cardOf()?.style.setProperty('visibility', 'hidden');  // the shelf from before shows while the new one loads
+  const start = coverSpot(), fly = flyingBook(name, pages.length, start);
+  shelfBook(name)?.style.setProperty('visibility', 'hidden');  // the shelf from before shows while the new one loads
   const shelved = showShelf();
   lead.show(true); mate.show(true);  // showShelf hides them; same task, so they never vanish on screen
   await shelved;
-  const card = cardOf();
+  const card = shelfBook(name);
   if (card) {
     card.style.visibility = 'hidden';  // the carried book lands here
-    const r = card.getBoundingClientRect(), end = [r.left, r.top, 1], [l0, m0] = hands(start), [l1, m1] = hands(end);
-    lead.pose(); mate.pose();
-    await Promise.all([lead.walkTo(...l0, 500), mate.walkTo(...m0, 500)]);  // to the bottom corners
-    lead.face(false); mate.face(true);
-    lead.pose('cheer'); mate.pose('cheer');  // both arms up, holding it
-    await wait(200);
-    // book and carriers on the same curve and clock, so their hands stay at its corners
-    const ms = Math.max(900, Math.hypot(end[0] - start[0], end[1] - start[1]) * 1.6);
-    await Promise.all([tween(fly, (x, y, s) => `translate(${x}px, ${y}px) scale(${s})`, start, end, ms, ease.inOut),
-                       lead.walkTo(...l1, ms), mate.walkTo(...m1, ms)]);
+    const r = card.getBoundingClientRect();
+    await pickUp(start);
+    await carry(fly, start, [r.left, r.top, 1]);
     card.style.visibility = '';
     fly.remove();
-    lead.face(false); mate.face(true);
     lead.pose('happy', 'cheer'); mate.pose('happy', 'cheer');  // put away
     await Promise.all([lead.hop(), mate.hop()]);
     lead.pose('happy'); mate.pose('happy');
     // off the bottom of the screen; they come back when a book is opened
-    for (const c of [lead, mate]) c.walkTo(c.x, innerHeight + 60, 900).then(() => { if (!book) { c.show(false); c.pose(); } });
+    for (const c of [lead, mate]) c.walkTo(c.x, innerHeight + 60, 900).then(() => { if (!book && !busy) { c.show(false); c.pose(); } });  // not if they were called back to carry
   }
   fly.remove();
   busy = leaving = false;
@@ -481,7 +515,7 @@ async function buildBook(name) {
   card.style.transform = '';
 }
 
-async function openBook(name) {
+async function openBook(name, carried) {  // carried: the Claw'ds are bringing it, so leave them where they are
   book = name;
   pages = await api(`/api/book?name=${enc(name)}`);
   at = 0;
@@ -490,7 +524,7 @@ async function openBook(name) {
   $('#reader').style.display = 'flex';
   draw();
   stopCrew(true);
-  for (const [c, pos] of [[lead, home()], [mate, home2()]]) { c.stop(); c.moveTo(...pos); c.face(false); c.show(true); }
+  if (!carried) for (const [c, pos] of [[lead, home()], [mate, home2()]]) { c.stop(); c.moveTo(...pos); c.face(false); c.show(true); }
 }
 
 const pageData = page => api(`/api/page?book=${enc(book)}&page=${enc(page)}`).catch(e => ({ kind: 'error', error: e.message }));
