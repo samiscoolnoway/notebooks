@@ -396,6 +396,54 @@ async function showShelf(arriving) {
   startCrew();
 }
 
+// Back to the shelf: the Claw'ds close the book, carry it over to its place on the shelf and put it there.
+let leaving = false;
+async function putAway() {
+  if (leaving || !book) return;
+  if (!motion()) return showShelf();
+  leaving = true;
+  const name = book;
+  if (at > 0) await flip(-1, 0);
+  busy = true;  // nobody grabs the carriers mid-carry
+  const from = box('#right'), k = (from.bottom - from.top) / 210;  // the closed cover; shelf books are 150 × 210
+  const fly = el('div', 'book');
+  fly.style.cssText = `position: fixed; left: 0; top: 0; z-index: 4; transform-origin: 0 0; background-color: ${color(name)}; --thick: ${Math.min(12, 3 + Math.ceil(pages.length / 3))}`;
+  fly.append(el('span', 't', name), el('span', 'n', `${pages.length} page${pages.length === 1 ? '' : 's'}`));
+  const start = [from.left + (from.right - from.left - 150 * k) / 2, from.top, k];
+  const hands = ([x, y, s]) => [[x + 10 * s, y + 204 * s], [x + 140 * s, y + 204 * s]];  // under its bottom corners
+  fly.style.transform = `translate(${start[0]}px, ${start[1]}px) scale(${k})`;
+  document.body.append(fly);
+  const cardOf = () => [...document.querySelectorAll('#shelf .book')].find(c => c.querySelector('.t')?.textContent === name);
+  cardOf()?.style.setProperty('visibility', 'hidden');  // the shelf from before shows while the new one loads
+  const shelved = showShelf();
+  lead.show(true); mate.show(true);  // showShelf hides them; same task, so they never vanish on screen
+  await shelved;
+  const card = cardOf();
+  if (card) {
+    card.style.visibility = 'hidden';  // the carried book lands here
+    const r = card.getBoundingClientRect(), end = [r.left, r.top, 1], [l0, m0] = hands(start), [l1, m1] = hands(end);
+    lead.pose(); mate.pose();
+    await Promise.all([lead.walkTo(...l0, 500), mate.walkTo(...m0, 500)]);  // to the bottom corners
+    lead.face(false); mate.face(true);
+    lead.pose('cheer'); mate.pose('cheer');  // both arms up, holding it
+    await wait(200);
+    // book and carriers on the same curve and clock, so their hands stay at its corners
+    const ms = Math.max(900, Math.hypot(end[0] - start[0], end[1] - start[1]) * 1.6);
+    await Promise.all([tween(fly, (x, y, s) => `translate(${x}px, ${y}px) scale(${s})`, start, end, ms, ease.inOut),
+                       lead.walkTo(...l1, ms), mate.walkTo(...m1, ms)]);
+    card.style.visibility = '';
+    fly.remove();
+    lead.face(false); mate.face(true);
+    lead.pose('happy', 'cheer'); mate.pose('happy', 'cheer');  // put away
+    await Promise.all([lead.hop(), mate.hop()]);
+    lead.pose('happy'); mate.pose('happy');
+    // off the bottom of the screen; they come back when a book is opened
+    for (const c of [lead, mate]) c.walkTo(c.x, innerHeight + 60, 900).then(() => { if (!book) { c.show(false); c.pose(); } });
+  }
+  fly.remove();
+  busy = leaving = false;
+}
+
 async function newBook() {
   const name = prompt('Name of the new book (for example: History)');
   if (!name || !name.trim()) return;
@@ -501,8 +549,7 @@ function copyOf(sheet) {
 
 // Two Claw'ds take the page by its outer edge, one low and one high up, carry it over the spine together
 // and lay it down on the other side.
-async function flip(d) {
-  const to = at + d;
+async function flip(d, to = at + d) {  // d: +1 forward, -1 back; `to` may skip spreads (closing the book)
   if (busy || lead.held || mate.held || to < 0 || to > spreads()) return;  // they can't turn a page while you hold one
   busy = true;
   if (!motion()) { at = to; draw(); busy = false; return; }
@@ -601,7 +648,7 @@ async function addYouTube(url, format) {
   afterAdding(first);
 }
 
-$('#back').onclick = showShelf;
+$('#back').onclick = putAway;
 $('#yt').onclick = () => { $('#yturl').value = ''; $('#ytdialog').returnValue = ''; $('#ytdialog').showModal(); };
 $('#ytdialog').onclose = () => { if ($('#ytdialog').returnValue === 'ok') addYouTube($('#yturl').value.trim(), $('#ytformat').value); };
 $('#prev').onclick = () => flip(-1);
@@ -644,7 +691,7 @@ document.onkeydown = e => {
   }
   if (e.key === 'ArrowRight') flip(1);
   else if (e.key === 'ArrowLeft') flip(-1);
-  else if (e.key === 'Escape') showShelf();
+  else if (e.key === 'Escape') putAway();
 };
 // Greeting on the shelf: morning until noon, noon for that hour, afternoon until 5 pm, evening after.
 const hello = () => {
