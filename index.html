@@ -6,6 +6,7 @@
 <title>Notebooks</title>
 <style>
   :root { --paper: #fbf8f1; --ink: #2a2622; --muted: #8a8178; }
+  /* No texture images on books or pages: any repeating background image there stopped WebKitGTK redrawing during page turns */
   * { box-sizing: border-box; }
   body { margin: 0; height: 100vh; overflow: hidden; color: #f2ebe0; font: 15px/1.5 system-ui, sans-serif;
          background: radial-gradient(circle at 50% 0, #40352d, #1c1815 75%); }
@@ -18,39 +19,53 @@
   button:focus-visible { outline: 2px solid #f0c27a; outline-offset: 2px; }
 
   /* Bookshelf */
-  #shelf { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 34px; padding: 20px 40px 60px; height: calc(100vh - 64px); overflow: auto; }
-  .book { position: relative; width: 150px; height: 210px; padding: 22px 14px 14px 26px; border-radius: 3px 8px 8px 3px;
-          display: flex; flex-direction: column; justify-content: space-between; text-align: left; color: #fff;
-          box-shadow: 6px 8px 18px rgba(0,0,0,.5); }  /* no transform transition: WebKitGTK flashes its first frame as it ends (see tween) */
-  .book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 12px; background: rgba(0,0,0,.25); border-right: 1px solid rgba(255,255,255,.15); }
+  /* Wooden shelves: one plank under each row of books (rows are 210px books + 34px gap, starting 20px down) */
+  #shelf { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 34px; padding: 20px 40px 60px; height: calc(100vh - 64px); overflow: auto;
+           background: repeating-linear-gradient(transparent 0 222px, #6b4a30 222px 232px, #8c6544 232px 233px, #563a25 233px 243px, #3a2718 243px 244px) local; }
+  .book { position: relative; width: 150px; height: 210px; padding: 22px 14px 14px 26px; border-radius: 2px 4px 4px 2px;
+          display: flex; flex-direction: column; justify-content: space-between; text-align: left; color: #f3dca5;
+          background-image: linear-gradient(to right, rgba(0,0,0,.3), rgba(255,255,255,.1) 9%, transparent 22%, transparent 85%, rgba(0,0,0,.18));
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 6px 8px 18px rgba(0,0,0,.5); }  /* no transform transition: WebKitGTK flashes its first frame as it ends (see tween) */
+  /* spine, with the groove where the cover hinges */
+  .book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 12px; background: rgba(0,0,0,.25); border-right: 1px solid rgba(255,255,255,.15); box-shadow: 2px 0 2px rgba(0,0,0,.3); }
+  /* page edges, seen a little from the side; thicker for books with more pages (--thick, set per book) */
+  .book::after { content: ""; position: absolute; top: 4px; bottom: 4px; right: calc(var(--thick, 4) * -1px); width: calc(var(--thick, 4) * 1px);
+                 background: repeating-linear-gradient(to right, #f1e9d8 0 1px, #cdbfa3 1px 2px); border-radius: 0 2px 2px 0; box-shadow: inset -1px 0 rgba(0,0,0,.25); }
   .book:hover { transform: translateY(-6px) rotate(-1deg); }
-  .book .t { font: 600 19px/1.2 Georgia, serif; overflow-wrap: break-word; hyphens: auto; }  /* "Mathe-matics", not "Mathemat / ics" */
+  .book .t { font: 600 19px/1.2 Georgia, serif; text-shadow: 0 -1px 0 rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.12);  /* gold, pressed into the cloth */ overflow-wrap: break-word; hyphens: auto; }  /* "Mathe-matics", not "Mathemat / ics" */
   .book .n { font-size: 12px; opacity: .8; }
   .book.new { background: transparent; border: 2px dashed #6d6158; box-shadow: none; color: #b5a999; align-items: center; justify-content: center; padding: 14px; }
-  .book.new::before { display: none; }
+  .book.new::before, .book.new::after { display: none; }
 
   /* Open book: two pages side by side, split at the spine */
   #reader { display: none; height: 100vh; flex-direction: column; }
   #reader.drag #spread { outline: 3px dashed #f0c27a; outline-offset: 6px; }
   #stage { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 0 24px; }
-  #spread { position: relative; display: flex; width: min(1500px, 100%); perspective: 3000px; }
+  #spread { position: relative; display: flex; width: min(1500px, 100%); margin: 8px 18px; perspective: 3000px; --ls: 1; --rs: 4; --board: #5a4636; }
   /* Always on their own layer: otherwise WebKit moves a page onto a new layer as a turn starts and back as it ends, repainting it both times */
   #left, #right { will-change: transform; }
   .sheet { flex: 1; min-width: 0; overflow-y: auto; scrollbar-width: thin; padding: 30px 34px; background-color: var(--paper); color: var(--ink); cursor: zoom-in; }
   .sheet.blank, .sheet.cover { cursor: default; }
   .sheet.cover { cursor: pointer; }
-  .under { position: absolute; pointer-events: none; }  /* copy of the old page, lying under the page being turned onto it */
-  #left, .under.left { border-radius: 6px 0 0 6px; transform-origin: right center;
-          background-image: linear-gradient(to left, rgba(0,0,0,.14), transparent 46px);
-          box-shadow: -4px 0 0 -1px #ebe3d3, -8px 0 0 -2px #d9d0be, -12px 0 0 -3px #c8bea9, 0 10px 30px rgba(0,0,0,.5); }
-  #right, .under.right { border-radius: 0 6px 6px 0; transform-origin: left center;
-           background-image: linear-gradient(to right, rgba(0,0,0,.14), transparent 46px);
-           box-shadow: 4px 0 0 -1px #ebe3d3, 8px 0 0 -2px #d9d0be, 12px 0 0 -3px #c8bea9, 0 10px 30px rgba(0,0,0,.5); }
+  .copy { position: absolute; pointer-events: none; }  /* stand-in for a sheet during a turn, see flip() */
+  /* Each page: shade into the spine, the stack of pages under it (--ls/--rs grow as you read on/back),
+     and the hardcover board around it in the book's colour (--board) */
+  #left, .copy.left { border-radius: 6px 0 0 6px; transform-origin: right center;
+          background-image: linear-gradient(to left, rgba(0,0,0,.16), transparent 46px);
+          box-shadow: calc(var(--ls) * -1px) 0 0 -1px #ebe3d3, calc(var(--ls) * -2px) 0 0 -2px #d9d0be, calc(var(--ls) * -3px) 0 0 -3px #c8bea9,
+                      -10px 0 0 8px var(--board), 0 12px 30px 8px rgba(0,0,0,.5); }
+  #right, .copy.right { border-radius: 0 6px 6px 0; transform-origin: left center;
+           background-image: linear-gradient(to right, rgba(0,0,0,.16), transparent 46px);
+           box-shadow: calc(var(--rs) * 1px) 0 0 -1px #ebe3d3, calc(var(--rs) * 2px) 0 0 -2px #d9d0be, calc(var(--rs) * 3px) 0 0 -3px #c8bea9,
+                       10px 0 0 8px var(--board), 0 12px 30px 8px rgba(0,0,0,.5); }
+  #left.turning, #right.turning, .copy.turning { box-shadow: none; }  /* a turning page is just paper: the stack and board stay put */
   .sheet img { display: block; width: 100%; margin: 0 0 14px; box-shadow: 0 0 0 1px #e6dfd2; }
   .sheet video { display: block; width: 100%; max-height: 75vh; background: #000; border-radius: 4px; cursor: auto; }
   .sheet pre { margin: 0; white-space: pre-wrap; font: 16px/1.65 Georgia, serif; }
   .sheet.cover { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; color: #fff; }
-  .cover .ct { font: 600 46px/1.15 Georgia, serif; overflow-wrap: anywhere; }
+  #spread .cover { background-image: linear-gradient(to right, rgba(0,0,0,.35), rgba(255,255,255,.1) 5%, transparent 14%, transparent 90%, rgba(0,0,0,.2));
+                   color: #f3dca5; outline: 1px solid rgba(243,220,165,.35); outline-offset: -16px; box-shadow: 0 12px 30px rgba(0,0,0,.5); }  /* the cover is the board */
+  .cover .ct { font: 600 46px/1.15 Georgia, serif; overflow-wrap: anywhere; text-shadow: 0 -1px 0 rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.12); }
   .cover .cn { opacity: .75; }
   .ptitle { margin-bottom: 18px; font: 600 12px system-ui; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .note { color: var(--muted); }
@@ -368,7 +383,8 @@ async function showShelf(arriving) {
   const books = await api('/api/books');
   const cards = books.map(b => {
     const c = el('button', 'book');
-    c.style.background = color(b.name);
+    c.style.backgroundColor = color(b.name);
+    c.style.setProperty('--thick', Math.min(12, 3 + Math.ceil(b.pages / 3)));
     c.append(el('span', 't', b.name), el('span', 'n', `${b.pages} page${b.pages === 1 ? '' : 's'}`));
     c.onclick = () => openBook(b.name);
     if (b.name === arriving) c.style.transform = 'scale(0)';  // the crew builds this one
@@ -429,16 +445,7 @@ async function openBook(name) {
   for (const [c, pos] of [[lead, home()], [mate, home2()]]) { c.stop(); c.moveTo(...pos); c.face(false); c.show(true); }
 }
 
-// Pages fetched ahead of a turn, so they are ready the moment they come into view instead of popping in mid-turn.
-const ahead = new Map();
 const pageData = page => api(`/api/page?book=${enc(book)}&page=${enc(page)}`).catch(e => ({ kind: 'error', error: e.message }));
-const prefetch = s => Promise.race([wait(1500), Promise.all([2 * s - 1, 2 * s].map(async n => {  // a slow office render isn't waited for
-  const page = pages[n - 1];
-  if (!page) return;
-  const p = await pageData(page);
-  ahead.set(`${book}/${page}`, p);
-  if (p.kind === 'images') await Promise.all(p.images.slice(0, 2).map(src => Object.assign(new Image(), { src }).decode().catch(() => {})));
-}))]);
 
 // Show page n (counting from 1) on a sheet; a blank sheet if there is no such page.
 async function fill(sheet, n) {
@@ -449,13 +456,9 @@ async function fill(sheet, n) {
   sheet.dataset.page = n;
   if (!page) { sheet.classList.add('blank'); sheet.replaceChildren(); return; }
   const title = el('div', 'ptitle', `${n} · ${label(page)}`);
-  let p = ahead.get(`${book}/${page}`);
-  ahead.delete(`${book}/${page}`);
-  if (!p) {
-    sheet.replaceChildren(title, el('p', 'note', 'Loading page…'));
-    p = await pageData(page);
-    if (sheet.token !== token) return;  // the sheet moved on to another page while this one was loading
-  }
+  sheet.replaceChildren(title, el('p', 'note', 'Loading page…'));
+  const p = await pageData(page);
+  if (sheet.token !== token) return;  // the sheet moved on to another page while this one was loading
   const body = p.kind === 'images' ? p.images.map(src => Object.assign(el('img'), { src, alt: '' }))
              : p.kind === 'video' ? [Object.assign(el('video'), { src: p.url, controls: true, preload: 'metadata' })]
              : p.kind === 'text' ? [el('pre', '', p.text)]
@@ -468,19 +471,32 @@ function draw() {
   $('#pos').textContent = !at ? 'Cover' : first === last ? `Page ${first} of ${pages.length}` : `Pages ${first}–${last} of ${pages.length}`;
   $('#prev').disabled = at === 0;
   $('#next').disabled = at >= spreads();
+  const read = spreads() ? at / spreads() : 0, sp = $('#spread').style;  // pages read pile up on the left
+  sp.setProperty('--board', color(book));
+  sp.setProperty('--ls', 1 + 3 * read);
+  sp.setProperty('--rs', 1 + 3 * (1 - read));
   if (!at) {
     L.style.visibility = 'hidden';
     L.token = R.token = null;
     L.replaceChildren();
     R.className = 'sheet cover';
-    R.style.background = color(book);
+    R.style.backgroundColor = color(book);
     R.replaceChildren(el('div', 'ct', book),
       el('div', 'cn', pages.length ? `${pages.length} page${pages.length === 1 ? '' : 's'} · click or press → to open` : 'No pages yet. Click “+ Add pages” or drop files here.'));
     return;
   }
   L.style.visibility = '';
-  fill(L, first);
-  fill(R, first + 1);
+  return Promise.all([fill(L, first), fill(R, first + 1)]);
+}
+
+// A stand-in for a sheet during a turn, showing what the sheet shows now.
+function copyOf(sheet) {
+  const c = sheet.cloneNode(true);
+  c.removeAttribute('id');
+  c.classList.add('copy', sheet.id);
+  Object.assign(c.style, { left: `${sheet.offsetLeft}px`, top: `${sheet.offsetTop}px`, width: `${sheet.offsetWidth}px`, height: `${sheet.offsetHeight}px` });
+  c.querySelectorAll('video').forEach(v => v.removeAttribute('src'));  // a picture of the page is enough
+  return c;
 }
 
 // Two Claw'ds take the page by its outer edge, one low and one high up, carry it over the spine together
@@ -494,27 +510,31 @@ async function flip(d) {
   const turn = deg => `rotateY(${deg}deg)`;
   const pg = box('#right'), h = pg.bottom - pg.top, up = h * 0.4;
   const [[fx, fy], [dx, dy]] = d > 0 ? [corner('right'), corner('left')] : [corner('left'), corner('right')];
-  // The turning page lands on the old page, so that stays visible until covered (else that half of the book goes dark).
-  // Laid down now, hidden under the real page, so drawing it costs no frame mid-turn.
-  const under = inn.cloneNode(true), scroll = inn.scrollTop;
-  under.removeAttribute('id');
-  under.classList.add('under', inn.id);
-  Object.assign(under.style, { left: `${inn.offsetLeft}px`, top: `${inn.offsetTop}px`, width: `${inn.offsetWidth}px`, height: `${inn.offsetHeight}px` });
-  under.querySelectorAll('video').forEach(v => v.removeAttribute('src'));  // a picture of the page is enough
+  // From now on the real sheets show the new spread, as in a real book: the next page is already there under the one
+  // being lifted. Copies of the old pages stand in: `leaf` is the page being turned, `under` the old page it lands on.
+  // Done before the walk, so building the new pages costs no frames once the page moves.
+  const under = copyOf(inn), leaf = copyOf(out);
   inn.before(under);  // earlier in the page, so it is drawn beneath
-  under.scrollTop = scroll;
+  out.after(leaf);
+  under.scrollTop = inn.scrollTop; leaf.scrollTop = out.scrollTop;
+  leaf.classList.add('turning');
+  at = to;
+  const shown = draw();
+  inn.classList.add('turning');  // after draw(), which resets the sheets' classes
+  inn.style.visibility = 'hidden';  // until the leaf has gone over
   lead.pose(); mate.pose();
-  await Promise.all([lead.walkTo(fx, fy, d > 0 ? 250 : 600), mate.walkTo(fx, fy - up, d > 0 ? 400 : 700), prefetch(to)]);
+  await Promise.all([lead.walkTo(fx, fy, d > 0 ? 250 : 600), mate.walkTo(fx, fy - up, d > 0 ? 400 : 700),
+                     Promise.race([wait(1500), shown])]);  // new pages loaded first; a slow office render isn't waited for
   lead.pose('grab'); mate.pose('grab');
   await wait(160);
-  await Promise.all([tween(out, turn, [0], [deg], 380, ease.in),
+  await Promise.all([tween(leaf, turn, [0], [deg], 380, ease.in),
                      lead.moveTo(pg.left, pg.top + h * 0.45, 380), mate.moveTo(pg.left, pg.top + h * 0.1, 380)]);
-  at = to;
-  draw();
-  out.style.transform = '';  // edge-on until now, so the old page never shows flat again
+  leaf.remove();
+  inn.style.visibility = '';
   await Promise.all([tween(inn, turn, [-deg], [0], 380, ease.out),
                      lead.moveTo(dx, dy, 380), mate.moveTo(dx, dy - up, 380)]);
   inn.style.transform = '';  // already flat, so this changes nothing on screen
+  inn.classList.remove('turning');
   under.remove();
   lead.pose('happy'); mate.pose('happy');  // a job well done
   busy = false;
