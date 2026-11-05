@@ -102,6 +102,8 @@ The app only uses Python's standard library, so there's nothing to `pip install`
 
 **Adding a YouTube video:** click **+ YouTube**, paste the link and pick a format. MP4 is the safe bet. OGV re-encodes the whole video, which takes a while. A link from inside a playlist saves just that one video.
 
+**Deleting a page:** click the page to open its close-up, then click **Delete page**. It goes to your desktop Trash, so you can restore it from there.
+
 ### What can go on a page
 
 | Kind | File types | Shown as |

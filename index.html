@@ -171,6 +171,7 @@
     <button id="zout" aria-label="Zoom out">−</button>
     <button id="zlvl" title="Reset zoom">100%</button>
     <button id="zin" aria-label="Zoom in">+</button>
+    <button id="fdel">Delete page</button>
     <button id="fclose">✕ Close</button>
   </div>
   <div id="fscroll"><article class="sheet" id="fsheet"></article></div>
@@ -646,6 +647,18 @@ function closeFocus() {
   if (spreadOf(fpage) !== at) { at = spreadOf(fpage); draw(); }  // land on the spread of the last page viewed
 }
 
+async function deletePage() {
+  const page = pages[fpage - 1];
+  if (!confirm(`Delete “${label(page)}”?\n\nIt goes to your Trash, so you can still get it back from there.`)) return;
+  try { await api(`/api/delete?book=${enc(book)}&page=${enc(page)}`, { method: 'POST' }); }
+  catch (e) { return alert(`Couldn’t delete it: ${e.message}`); }
+  pages = await api(`/api/book?name=${enc(book)}`);
+  fpage = Math.min(fpage, pages.length);
+  at = Math.min(at, spreads());
+  draw();
+  if (fpage) showFocus(); else closeFocus();  // that was the last page
+}
+
 // Zoom by widening the sheet (images and video follow its width) and scaling text; CSS zoom differs between engines.
 function setZoom(z) {
   zoom = Math.min(4, Math.max(0.5, Math.round(z * 100) / 100));
@@ -697,6 +710,7 @@ for (const s of [$('#left'), $('#right')]) s.onclick = e => {
 $('#fprev').onclick = () => { fpage--; showFocus(); };
 $('#fnext').onclick = () => { fpage++; showFocus(); };
 $('#fclose').onclick = closeFocus;
+$('#fdel').onclick = deletePage;
 $('#zin').onclick = () => setZoom(zoom + 0.25);
 $('#zout').onclick = () => setZoom(zoom - 0.25);
 $('#zlvl').onclick = () => setZoom(1);

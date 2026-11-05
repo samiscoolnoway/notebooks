@@ -219,6 +219,15 @@ class Handler(BaseHTTPRequestHandler):
         if method == "POST" and path == "/api/youtube":
             # shortcut: no progress bar, the request waits until the download finishes; add a job + polling if long videos feel stuck.
             return self.send(201, {"page": download_video(q.get("book", ""), q.get("url", ""), q.get("format", "mp4"))})
+        if method == "POST" and path == "/api/delete":
+            book, page = q.get("book", ""), safe_name(q.get("page", ""))
+            src = book_dir(book) / page
+            if not src.is_file():
+                raise FileNotFoundError(page)
+            run(["gio", "trash", "--", str(src)])  # into the desktop Trash, so a page deleted by mistake can be restored
+            with render_lock:
+                shutil.rmtree(book_dir(book) / ".pages" / page, ignore_errors=True)
+            return self.send(200, {})
         raise FileNotFoundError(path)
 
 

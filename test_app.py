@@ -1,8 +1,15 @@
-"""Self-check: python3 test_app.py (uses a temp folder, never touches ~/Notebooks)."""
-import json, os, subprocess, tempfile, threading, urllib.request, urllib.error
+"""Self-check: python3 test_app.py (uses a temp folder, never touches ~/Notebooks or your Trash)."""
+import atexit, json, os, shutil, subprocess, tempfile, threading, urllib.request, urllib.error
+from pathlib import Path
 from urllib.parse import quote
 
-os.environ["NOTEBOOKS_DIR"] = tempfile.mkdtemp()
+# Under home, not /tmp: gio won't trash files on tmpfs. A private XDG_DATA_HOME keeps test pages out of your real Trash.
+scratch = tempfile.mkdtemp(prefix="notebooks-test-", dir=Path.home() / ".cache")
+atexit.register(shutil.rmtree, scratch, ignore_errors=True)
+os.environ["NOTEBOOKS_DIR"] = f"{scratch}/books"
+os.environ["XDG_DATA_HOME"] = f"{scratch}/data"
+os.environ["GIO_USE_VFS"] = "local"  # skip the gvfs daemon, which writes metadata there after the test ends
+os.makedirs(os.environ["NOTEBOOKS_DIR"])
 import app
 
 server = app.ThreadingHTTPServer(("127.0.0.1", 0), app.Handler)
@@ -54,6 +61,16 @@ assert call(video_page["url"], headers={"Range": "bytes=2-5"}) == (206, video[2:
 assert call(video_page["url"], headers={"Range": "bytes=7-"}) == (206, video[7:])
 assert call(video_page["url"], headers={"Range": "bytes=-3"}) == (206, video[-3:])
 assert call(video_page["url"], headers={"Range": "bytes=50-"})[0] == 416
+
+# Deleting a page sends it to the Trash and drops its rendered images.
+assert (Path(scratch) / "books/History/.pages" / pages[0]).is_dir()
+assert call("/api/delete?book=History&page=" + quote(pages[0]), b"", headers={})[0] == 403   # no custom header
+assert call("/api/delete?book=History&page=" + quote("../History"), b"")[0] == 400
+assert call("/api/delete?book=History&page=nope.txt", b"")[0] == 404
+assert call("/api/delete?book=History&page=" + quote(pages[0]), b"")[0] == 200
+assert json.loads(call("/api/book?name=History")[1]) == ["002 summary.txt", "003 lecture.mp4"]
+assert (Path(scratch) / "data/Trash/files" / pages[0]).read_bytes() == pdf
+assert not (Path(scratch) / "books/History/.pages" / pages[0]).exists()
 
 assert call("/files/History/../../../etc/passwd")[0] == 404
 assert call("/files/History/" + quote("../../etc/passwd", safe=""))[0] == 404
