@@ -62,6 +62,12 @@ assert call(video_page["url"], headers={"Range": "bytes=7-"}) == (206, video[7:]
 assert call(video_page["url"], headers={"Range": "bytes=-3"}) == (206, video[-3:])
 assert call(video_page["url"], headers={"Range": "bytes=50-"})[0] == 416
 
+# A changed file gets new addresses, or the app window would keep showing its cached old images.
+f = Path(scratch) / "books/History/003 lecture.mp4"
+os.utime(f, ns=(f.stat().st_atime_ns, f.stat().st_mtime_ns + 10**9))
+new_url = json.loads(call(f"/api/page?book=History&page={quote('003 lecture.mp4')}")[1])["url"]
+assert new_url != video_page["url"] and call(new_url) == (200, video), new_url
+
 # Deleting a page sends it to the Trash and drops its rendered images.
 assert (Path(scratch) / "books/History/.pages" / pages[0]).is_dir()
 assert call("/api/delete?book=History&page=" + quote(pages[0]), b"", headers={})[0] == 403   # no custom header

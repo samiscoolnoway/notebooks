@@ -72,8 +72,9 @@ def download_video(book, url, fmt):
     return dest.name
 
 
-def file_url(book, rel):
-    return quote(f"/files/{book}/{rel}")
+def file_url(book, rel, src):
+    # ?v= changes whenever the page's file does: a replaced file keeps its name, and the window would show its cached images.
+    return quote(f"/files/{book}/{rel}") + f"?v={src.stat().st_mtime_ns}"
 
 
 def render(book, page):
@@ -83,9 +84,9 @@ def render(book, page):
         raise FileNotFoundError(page)
     ext = src.suffix.lower()
     if ext in IMAGES:
-        return {"kind": "images", "images": [file_url(book, page)]}
+        return {"kind": "images", "images": [file_url(book, page, src)]}
     if ext in VIDEOS:
-        return {"kind": "video", "url": file_url(book, page)}
+        return {"kind": "video", "url": file_url(book, page, src)}
     if ext == ".pdf" or ext in OFFICE:
         cache = book_dir(book) / ".pages" / page
         with render_lock:
@@ -107,7 +108,7 @@ def render(book, page):
                     shutil.rmtree(cache, ignore_errors=True)  # don't leave a half-rendered cache that looks fresh
                     raise
         # pdftoppm zero-pads page numbers, so name order is page order
-        return {"kind": "images", "images": [file_url(book, f".pages/{page}/{i.name}") for i in sorted(cache.glob("p-*.png"))]}
+        return {"kind": "images", "images": [file_url(book, f".pages/{page}/{i.name}", src) for i in sorted(cache.glob("p-*.png"))]}
     try:
         return {"kind": "text", "text": src.read_text()}
     except UnicodeDecodeError:
