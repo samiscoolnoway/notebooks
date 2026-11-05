@@ -64,6 +64,7 @@ Claw'd is Claude Code's little pixel mascot. In this app he has four friends.
 | they're feeling playful | play tag. One runs off and the other chases close behind. After three rounds they both laugh |
 | you make a new book | everyone runs in carrying parts in the book's colour, forms a ring and hammers away. The book grows a little each round, they cheer when it's done, and it opens |
 | you turn a page | two of them walk to the page corner, grab it (one low, one high), carry it over the spine, lay it down and smile |
+| you add a page | the two page-turners bring pens and write it out by hand, one on the top half and one on the bottom, for as long as it takes to upload or download. When it's ready they ink in the real page from the top down and hop |
 | you **grab one** with the mouse | he dangles from the cursor, sways, kicks his legs, flails his arms and squeezes his eyes shut until you let go. Then he drops, bounces and runs back to whatever he was doing |
 
 > [!TIP]

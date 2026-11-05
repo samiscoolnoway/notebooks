@@ -69,6 +69,9 @@
   .cover .cn { opacity: .75; }
   .ptitle { margin-bottom: 18px; font: 600 12px system-ui; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .note { color: var(--muted); }
+  /* The Claw'ds' handwritten draft of a page that is still uploading: rows of little ink word-bits */
+  .draft .wl { display: flex; gap: 7px; height: 26px; align-items: center; }
+  .draft .w { height: 4px; border-radius: 2px; background: #3b4670; opacity: .75; transform-origin: left; }
   footer { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px; }
   #pos { min-width: 150px; text-align: center; }
 
@@ -96,7 +99,10 @@
   @keyframes step { 50% { transform: translateY(-.6px); } }
   .clawd .arm { transition: transform .1s steps(2); }
   .clawd.grab .arm-r, .clawd.carry .arm, .clawd.cheer .arm { transform: translateY(-2px); }
-  .clawd .held, .clawd .happy-eyes { display: none; }
+  .clawd .held, .clawd .happy-eyes, .clawd .pen { display: none; }
+  .clawd.write .pen { display: inline; }  /* writing a new page, see writeIn() */
+  .clawd.write .arm-r, .clawd.write .pen { animation: scribble .18s steps(1) infinite; }
+  @keyframes scribble { 50% { transform: translate(-.4px, -.4px); } }
   .clawd.carry .held { display: inline; }
   .clawd.happy .happy-eyes, .clawd.grabbed .happy-eyes { display: inline; }
   .clawd.happy .eyes, .clawd.grabbed .eyes { display: none; }
@@ -157,6 +163,7 @@
       <rect class="arm arm-r" x="10" y="2" width="2" height="2"/>
       <rect x="2" y="0" width="8" height="6"/>
     </g>
+    <g class="pen"><rect x="11" y="1" width="1" height="4" fill="#3b4670"/><rect x="11" y="5" width="1" height="1" fill="#1d1d1d"/></g>
     <g class="eyes" fill="#000"><rect x="3" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/></g>
     <path class="happy-eyes" d="M3 .9l1 .6-1 .6M9 .9l-1 .6 1 .6" stroke="#000" stroke-width=".4" fill="none"/>
   </svg>
@@ -266,7 +273,7 @@ class Clawd {
     if (alive()) await this.moveTo(x, y, 140);
   }
   face(left) { this.el.classList.toggle('left', left); }
-  pose(...cls) { this.el.classList.remove('grab', 'carry', 'cheer', 'happy'); this.el.classList.add(...cls); }
+  pose(...cls) { this.el.classList.remove('grab', 'carry', 'cheer', 'happy', 'write'); this.el.classList.add(...cls); }
   stop() { this.run++; this.el.classList.remove('walk'); this.pose(); this.moveTo(...this.here()); }
 }
 const lead = new Clawd(), mate = new Clawd();  // the two who turn pages together
@@ -296,7 +303,7 @@ function startCrew() {
 // Grab any Claw'd and drag him around; he squirms until you let go, then lands with a bounce.
 let building = false;
 for (const c of [lead, mate, ...crew]) c.el.onpointerdown = e => {
-  if (building || (busy && (c === lead || c === mate))) return;
+  if (building || ((busy || draft) && (c === lead || c === mate))) return;
   e.preventDefault();
   c.el.setPointerCapture(c.pointer = e.pointerId);
   c.stop();
@@ -451,6 +458,7 @@ async function takeOut(name, card, n) {
 let leaving = false;
 async function putAway() {
   if (leaving || !book) return;
+  draft?.stop();  // leaving while a page is still being written: it is still added, just not shown being written
   if (!motion()) return showShelf();
   leaving = true;
   const name = book;
@@ -549,8 +557,9 @@ async function fill(sheet, n) {
   sheet.replaceChildren(title, ...body);
 }
 
-function draw() {
-  const L = $('#left'), R = $('#right'), first = 2 * at - 1, last = Math.min(2 * at, pages.length);
+// Page count, buttons and the page stacks for the open spread.
+function nav() {
+  const first = 2 * at - 1, last = Math.min(2 * at, pages.length);
   $('#pos').textContent = !at ? 'Cover' : first === last ? `Page ${first} of ${pages.length}` : `Pages ${first}–${last} of ${pages.length}`;
   $('#prev').disabled = at === 0;
   $('#next').disabled = at >= spreads();
@@ -558,6 +567,11 @@ function draw() {
   sp.setProperty('--board', color(book));
   sp.setProperty('--ls', 1 + 3 * read);
   sp.setProperty('--rs', 1 + 3 * (1 - read));
+}
+
+function draw() {
+  const L = $('#left'), R = $('#right'), first = 2 * at - 1;
+  nav();
   if (!at) {
     L.style.visibility = 'hidden';
     L.token = R.token = null;
@@ -585,7 +599,7 @@ function copyOf(sheet) {
 // Two Claw'ds take the page by its outer edge, one low and one high up, carry it over the spine together
 // and lay it down on the other side.
 async function flip(d, to = at + d) {  // d: +1 forward, -1 back; `to` may skip spreads (closing the book)
-  if (busy || lead.held || mate.held || to < 0 || to > spreads()) return;  // they can't turn a page while you hold one
+  if (busy || draft || lead.held || mate.held || to < 0 || to > spreads()) return;  // they can't turn a page while you hold one
   busy = true;
   if (!motion()) { at = to; draw(); busy = false; return; }
   const [out, inn, deg] = d > 0 ? [$('#right'), $('#left'), -90] : [$('#left'), $('#right'), 90];
@@ -668,31 +682,104 @@ function setZoom(z) {
   $('#zlvl').textContent = `${Math.round(zoom * 100)}%`;
 }
 
-async function afterAdding(first) {
-  pages = await api(`/api/book?name=${enc(book)}`);
-  at = spreadOf(Math.min(first, pages.length));
-  draw();
+// New pages are written by hand. While a page uploads (or downloads), the two Claw'ds bring pens and write little bits
+// of words on it, lead the top half and mate the bottom half. Once the real page is ready they ink it in from the top,
+// wiping their draft away. `work` is the upload; one page is written at a time.
+let draft = null, writing = Promise.resolve();
+function writeIn(name, status, work) {
+  work.catch(() => {});  // handled in writePage; this only stops it counting as unhandled while it waits its turn
+  return writing = writing.catch(() => {}).then(() => writePage(name, status, work));
+}
+
+const TIP = [33, 18];  // his pen tip, from his hands, when he faces right
+const penTo = (c, x, y, ms) => c.moveTo(x - TIP[0], y - TIP[1], ms);
+async function scribble(c, rows, stop) {
+  c.pose('write');
+  for (const row of rows) {
+    const r = row.getBoundingClientRect(), y = r.top + r.height / 2;
+    await c.walkTo(r.left - TIP[0], y - TIP[1], 300);  // back to the start of the next line
+    for (let x = r.left; !stop(); ) {
+      const w = 14 + Math.random() * 46;
+      if (x + w > r.right) break;
+      const word = row.appendChild(el('span', 'w'));
+      word.style.width = `${w}px`;
+      await Promise.all([tween(word, s => `scaleX(${s})`, [0], [1], w * 5, ease.inOut), penTo(c, x + w, y, w * 5)]);  // ink follows the pen
+      x += w + 7;
+    }
+    if (stop()) return;
+  }
+}
+
+async function writePage(name, status, work) {
+  const mine = book, n = pages.length + 1, sheet = $(n % 2 ? '#left' : '#right');
+  const refresh = async () => { pages = await api(`/api/book?name=${enc(mine)}`); };
+  if (!motion()) {
+    $('#pos').textContent = status;
+    await work;
+    if (book === mine) { await refresh(); at = spreadOf(n); draw(); }
+    return;
+  }
+  while (busy) await wait(100);  // a page turn finishes first
+  if (at !== spreadOf(n)) { at = spreadOf(n); draw(); }
+  $('#pos').textContent = status;
+  const pad = copyOf(sheet), lines = el('div');
+  pad.classList.add('draft');
+  pad.replaceChildren(el('div', 'ptitle', `${n} · ${label(name)}`), lines);
+  sheet.after(pad);  // drawn over the sheet, which fills in underneath once the page is uploaded
+  const d = draft = { stop() { d.dead = true; pad.remove(); if (draft === d) draft = null; } };
+  // Written for at least 2 s, so there is something to see even when the upload is instant.
+  let ready = false;
+  const page = (async () => {
+    await work;
+    if (d.dead) return;
+    await refresh();
+    await fill(sheet, n);
+    await Promise.race([Promise.all([...sheet.querySelectorAll('img')].map(i => i.decode().catch(() => {}))), wait(5000)]);
+  })();
+  Promise.all([page.catch(() => {}), wait(2000)]).then(() => ready = true);
+  const stop = () => ready || d.dead, b = pad.getBoundingClientRect();
+  const rows = Math.max(2, Math.floor((b.bottom - lines.getBoundingClientRect().top - 30) / 26)), half = Math.ceil(rows / 2);
+  lead.stop(); mate.stop();
+  while (!stop()) {  // a page full of draft and still not done: start a fresh one
+    const rs = Array.from({ length: rows }, () => lines.appendChild(el('div', 'wl')));
+    await Promise.all([scribble(lead, rs.slice(0, half), stop), scribble(mate, rs.slice(half), stop)]);
+    if (!stop()) lines.replaceChildren();
+  }
+  const failed = await page.then(() => null, e => e);
+  if (d.dead) { if (failed) throw failed; return; }  // the book was put away; the Claw'ds are busy with that
+  if (!failed) {
+    // ink it in: the real page shows from the top down, where their pens pass
+    const xs = [b.left + b.width * .3, b.left + b.width * .7], ms = 1400;
+    await Promise.all([penTo(lead, xs[0], b.top, 300), penTo(mate, xs[1], b.top, 300)]);
+    lead.face(false); mate.face(false);  // pens on the right, where TIP expects them; they only move straight down from here
+    const edge = { style: { set transform(v) { pad.style.clipPath = v; } } };  // tween() sets a transform; this turns it into the draft's clip
+    if (!d.dead) await Promise.all([tween(edge, p => `inset(${p}% 0 0 0)`, [0], [100], ms, ease.inOut), penTo(lead, xs[0], b.bottom, ms), penTo(mate, xs[1], b.bottom, ms)]);
+  }
+  if (d.dead) return;
+  d.stop();
+  if (failed) { at = Math.min(at, spreads()); draw(); }  // back off the empty spread opened for it
+  else {
+    nav();
+    lead.pose('happy', 'cheer'); mate.pose('happy', 'cheer');  // done!
+    await Promise.all([lead.hop(), mate.hop()]);
+  }
+  for (const [c, pos] of [[lead, home()], [mate, home2()]]) c.walkTo(...pos).then(() => { if (!draft && !busy) c.pose(); });
+  if (failed) throw failed;
 }
 
 async function upload(files) {
-  if (!files.length) return;
-  const first = pages.length + 1;
   for (const f of files) {
-    $('#pos').textContent = `Adding ${f.name}…`;
-    try { await api(`/api/upload?book=${enc(book)}&name=${enc(f.name)}`, { method: 'POST', body: f }); }
+    try { await writeIn(f.name, `Adding ${f.name}…`, api(`/api/upload?book=${enc(book)}&name=${enc(f.name)}`, { method: 'POST', body: f })); }
     catch (e) { alert(`${f.name}: ${e.message}`); }
   }
-  afterAdding(first);
 }
 
 async function addYouTube(url, format) {
-  const first = pages.length + 1, btn = $('#yt');
+  const btn = $('#yt');
   btn.disabled = true;
-  $('#pos').textContent = 'Downloading from YouTube… (can take a few minutes)';
-  try { await api(`/api/youtube?book=${enc(book)}&url=${enc(url)}&format=${format}`, { method: 'POST' }); }
+  try { await writeIn('YouTube video', 'Downloading from YouTube… (can take a few minutes)', api(`/api/youtube?book=${enc(book)}&url=${enc(url)}&format=${format}`, { method: 'POST' })); }
   catch (e) { alert(`Couldn’t add the video: ${e.message}`); }
   btn.disabled = false;
-  afterAdding(first);
 }
 
 $('#back').onclick = putAway;
@@ -721,7 +808,7 @@ $('#fscroll').addEventListener('wheel', e => {
 }, { passive: false });
 addEventListener('resize', () => {
   if (!$('#focus').hidden) setZoom(zoom);
-  if (book && !busy) { lead.moveTo(...home()); mate.moveTo(...home2()); }
+  if (book && !busy && !draft) { lead.moveTo(...home()); mate.moveTo(...home2()); }
 });
 const reader = $('#reader');
 reader.ondragover = e => { e.preventDefault(); reader.classList.add('drag'); };
